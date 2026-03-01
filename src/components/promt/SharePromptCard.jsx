@@ -54,7 +54,7 @@ function canvasToBlob(canvas) {
   return new Promise((res) => canvas.toBlob(res, "image/png"));
 }
 
-export function SharePromptCard({ prompt, publicLink, userHandle, onClose }) {
+export function SharePromptCard({ prompt, message, publicLink, userHandle, onClose }) {
   const cardRef = useRef(null);
 
   const [themeIdx, setThemeIdx] = useState(0);
@@ -65,7 +65,11 @@ export function SharePromptCard({ prompt, publicLink, userHandle, onClose }) {
   const [guide,  setGuide]  = useState(null);
 
   const shareLink    = prompt?.share_url ?? publicLink;
-  const questionText = prompt?.question_text ?? "Envoie-moi un message anonyme !";
+  const cardText =
+    message?.anonymous_content ??
+    prompt?.question_text ??
+    "Envoie-moi un message anonyme !";
+    const isMessage = !!message;
   const filename     = `anonbox-${userHandle ?? "question"}.png`;
 
   useEffect(() => {
@@ -124,7 +128,9 @@ export function SharePromptCard({ prompt, publicLink, userHandle, onClose }) {
     setBusy(true);
     try {
       downloadCanvas(await getCanvas(), filename);
-      const text = `${questionText}\n\n👉 Réponds anonymement : ${shareLink}`;
+      const text = isMessage
+       ? `J'ai reçu ce message anonyme 👇\n\n"${cardText}"`
+      : `${cardText}\n\n👉 Réponds anonymement : ${shareLink}`;
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank");
       setGuide({
         color: "#25D366",
@@ -143,7 +149,7 @@ export function SharePromptCard({ prompt, publicLink, userHandle, onClose }) {
   /* ── Facebook ── */
   const handleFacebook = () => {
     window.open(
-      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareLink)}&quote=${encodeURIComponent(questionText)}`,
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareLink)}&quote=${encodeURIComponent(cardText)}`,
       "_blank", "width=600,height=500"
     );
     setGuide({
@@ -168,7 +174,11 @@ export function SharePromptCard({ prompt, publicLink, userHandle, onClose }) {
       const blob   = await canvasToBlob(canvas);
       const file   = new File([blob], filename, { type: "image/png" });
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: "AnonBox", text: questionText, url: shareLink });
+        await navigator.share({ 
+          files: [file], 
+          title: "AnonBox", 
+          text: isMessage ? cardText : undefined, 
+          url: isMessage ? undefined : shareLink });
       } else {
         downloadCanvas(canvas, filename);
       }
@@ -221,7 +231,9 @@ export function SharePromptCard({ prompt, publicLink, userHandle, onClose }) {
 
           {/* Header */}
           <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
-            <p className="text-white font-black text-base">Partager ma question</p>
+            <p className="text-white font-black text-base">
+              {isMessage ? "Partager ce message" : "Partager ma question"}
+            </p>
             <button
               onClick={onClose}
               className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white/60 hover:text-white hover:bg-white/20 transition"
@@ -262,27 +274,30 @@ export function SharePromptCard({ prompt, publicLink, userHandle, onClose }) {
               {/* Question */}
               <div style={{ flex: 1 }}>
                 <p style={{ color: theme.sub, fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.2px", marginBottom: "8px" }}>
-                  Question du moment
+                {isMessage ? "Message reçu" : "Question du moment"}
                 </p>
                 <p style={{
                   color: theme.text,
-                  fontSize: questionText.length > 80 ? "15px" : questionText.length > 50 ? "18px" : "21px",
+                  fontSize: cardText.length > 80 ? "15px" : cardText.length > 50 ? "18px" : "21px",
                   fontWeight: 900,
                   lineHeight: 1.3,
                 }}>
-                  "{questionText}"
+                  "{cardText}"
                 </p>
               </div>
 
               {/* Footer */}
-              <div style={{ marginTop: "18px", paddingTop: "14px", borderTop: `1px solid ${theme.border}` }}>
-                <p style={{ color: theme.sub, fontSize: "10px", fontWeight: 700, marginBottom: "3px" }}>
-                  Réponds anonymement 👇
-                </p>
-                <p style={{ color: theme.text, fontSize: "11px", fontWeight: 800, wordBreak: "break-all" }}>
-                  {shareLink.replace(/^https?:\/\//, "")}
-                </p>
-              </div>
+              {/* Footer */}
+          {!isMessage && (
+            <div style={{ marginTop: "18px", paddingTop: "14px", borderTop: `1px solid ${theme.border}` }}>
+              <p style={{ color: theme.sub, fontSize: "10px", fontWeight: 700, marginBottom: "3px" }}>
+                Réponds anonymement 👇
+              </p>
+              <p style={{ color: theme.text, fontSize: "11px", fontWeight: 800, wordBreak: "break-all" }}>
+                {shareLink.replace(/^https?:\/\//, "")}
+              </p>
+            </div>
+          )}
             </div>
           </div>
 

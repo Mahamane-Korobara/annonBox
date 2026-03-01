@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
-import { CheckCircle2, Clock, Flag, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock, Forward, Trash2 } from "lucide-react";
 
 /**
  * Formate la date en "Il y a X min / heures / jours / Hier"
@@ -89,7 +89,7 @@ export default function MessageCard({
             className="text-text-muted-light hover:text-primary transition"
             title="Partager"
           >
-            <Flag size={14} />
+            <Forward size={14} />
           </button>
 
           {/* Supprimer */}

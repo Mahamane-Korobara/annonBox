@@ -28,6 +28,7 @@ export default function DashboardPage() {
   const [sharePromptId, setSharePromptId]   = useState(null);
   const [copiedLink, setCopiedLink]         = useState(false);
   const [showShareCard, setShowShareCard]   = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState(null);
   const [sidebarOpen, setSidebarOpen]       = useState(false);
 
   // ── Fix hydration ────────────────────────────────────────────────────────
@@ -160,13 +161,23 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background-light dark:bg-background-dark">
 
-      {/* Modal carte partage */}
+      {/* Modal carte partage question */}
       {showShareCard && (
         <SharePromptCard
           prompt={selectedPrompt}
           publicLink={publicLink}
           userHandle={user?.handle}
           onClose={() => setShowShareCard(false)}
+        />
+      )}
+
+      {/* Modal carte partage message */}
+      {selectedMessage && (
+        <SharePromptCard
+          message={selectedMessage}
+          publicLink={publicLink}
+          userHandle={user?.handle}
+          onClose={() => setSelectedMessage(null)}
         />
       )}
 
@@ -306,8 +317,8 @@ export default function DashboardPage() {
                       message={msg}
                       onMarkAsRead={() => markAsRead(msg.id)}
                       onDelete={() => remove(msg.id)}
-                      onShare={() => share(msg.id)}
-                      onGenerateCard={() => generateCard(msg.id)}
+                      onShare={() => setSelectedMessage(msg)}
+                      onGenerateCard={() => setSelectedMessage(msg)}
                       disabled={actionLoading}
                     />
                   ))}
