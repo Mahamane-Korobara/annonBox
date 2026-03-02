@@ -105,6 +105,20 @@ export default function DashboardPage() {
     setShowShareCard(true);
   };
 
+  const handleShareMessage = async (msg) => {
+    if (!msg) return;
+
+    if (msg.status === MESSAGE_STATUS.UNREAD) {
+      const marked = await markAsRead(msg.id);
+      if (!marked) return;
+    }
+
+    setSelectedMessage({
+      ...msg,
+      status: "read",
+    });
+  };
+
   const copyShareLink = () => {
     navigator.clipboard.writeText(shareLink);
     setCopiedLink(true);
@@ -317,7 +331,7 @@ export default function DashboardPage() {
                       message={msg}
                       onMarkAsRead={() => markAsRead(msg.id)}
                       onDelete={() => remove(msg.id)}
-                      onShare={() => setSelectedMessage(msg)}
+                      onShare={() => handleShareMessage(msg)}
                       onGenerateCard={() => setSelectedMessage(msg)}
                       disabled={actionLoading}
                     />
