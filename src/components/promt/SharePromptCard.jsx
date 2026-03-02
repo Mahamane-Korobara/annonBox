@@ -121,12 +121,25 @@ export function SharePromptCard({ prompt, message, publicLink, userHandle, onClo
     if (!res.ok) throw new Error("Publication du lien de partage impossible");
 
     const payload = await res.json();
-    const pageUrl = payload?.data?.sharePageUrl;
+    const pageUrl =
+      payload?.data?.id && typeof window !== "undefined"
+        ? `${window.location.origin}/share/${payload.data.id}`
+        : payload?.data?.sharePageUrl;
     if (!pageUrl) throw new Error("Lien de partage invalide");
 
     shareCacheRef.current = { key: shareCacheKey, url: pageUrl };
     return pageUrl;
   }, [buildShareText, cardText, filename, getCanvas, isMessage, shareCacheKey, shareLink]);
+
+  const resolveShareLink = useCallback(async () => {
+    try {
+      const pageLink = await createSharePage();
+      return { link: pageLink, hasPreviewCard: true };
+    } catch (error) {
+      console.error("Create share page failed:", error);
+      return { link: shareLink, hasPreviewCard: false };
+    }
+  }, [createSharePage, shareLink]);
 
   const shareViaNative = useCallback(async ({ url, text }) => {
     if (!cardRef.current || typeof navigator === "undefined" || typeof navigator.share !== "function") {
@@ -178,8 +191,7 @@ export function SharePromptCard({ prompt, message, publicLink, userHandle, onClo
     if (!cardRef.current || busy) return;
     setBusy(true);
     try {
-      let effectiveLink = shareLink;
-      try { effectiveLink = await createSharePage(); } catch {}
+      const { link: effectiveLink, hasPreviewCard } = await resolveShareLink();
       const effectiveText = buildShareText(effectiveLink);
 
       const nativeResult = await shareViaNative({ url: effectiveLink, text: effectiveText });
@@ -208,12 +220,19 @@ export function SharePromptCard({ prompt, message, publicLink, userHandle, onClo
         color: "#E1306C",
         emoji: "📸",
         title: "Instagram Story",
-        steps: [
-          "L'image a été téléchargée dans ta galerie",
-          "Le lien a été copié dans ton presse-papier",
-          "Ouvre Instagram → Nouvelle Story → sélectionne l'image",
-          'Ajoute un sticker "Lien" et colle ton lien',
-        ],
+        steps: hasPreviewCard
+          ? [
+              "L'image a été téléchargée dans ta galerie",
+              "Le lien de partage (avec aperçu carte) a été copié",
+              "Ouvre Instagram → Nouvelle Story → sélectionne l'image",
+              'Ajoute un sticker "Lien" puis colle le lien',
+            ]
+          : [
+              "L'image a été téléchargée dans ta galerie",
+              "Le lien standard a été copié",
+              "La carte n'a pas pu être publiée pour l'aperçu automatique",
+              'Partage possible via sticker "Lien" manuel',
+            ],
         cta: { label: "Ouvrir Instagram", href: "instagram://story-camera" },
       });
     } finally { setBusy(false); }
@@ -224,15 +243,14 @@ export function SharePromptCard({ prompt, message, publicLink, userHandle, onClo
     if (!cardRef.current || busy) return;
     setBusy(true);
     try {
-      let effectiveLink = shareLink;
-      try { effectiveLink = await createSharePage(); } catch {}
+      const { link: effectiveLink, hasPreviewCard } = await resolveShareLink();
       const text = buildShareText(effectiveLink);
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank");
       setGuide({
         color: "#25D366",
         emoji: "💬",
         title: "WhatsApp",
-        steps: effectiveLink !== shareLink
+        steps: hasPreviewCard
           ? [
               "WhatsApp s'ouvre avec ton texte + lien prêt",
               "Le lien contient l'image de la carte en aperçu",
@@ -240,8 +258,8 @@ export function SharePromptCard({ prompt, message, publicLink, userHandle, onClo
             ]
           : [
               "WhatsApp s'ouvre avec le texte + lien prêt",
-              "Si l'image n'apparaît pas, le lien public n'est pas disponible",
-              "Vérifie que ton site est en URL HTTPS publique (pas localhost)",
+              "La publication de la carte a échoué, donc pas d'aperçu image",
+              "Vérifie le serveur Next (route /api/shares) puis réessaie",
             ],
         cta: null,
       });
@@ -253,8 +271,7 @@ export function SharePromptCard({ prompt, message, publicLink, userHandle, onClo
     if (busy) return;
     setBusy(true);
     try {
-      let effectiveLink = shareLink;
-      try { effectiveLink = await createSharePage(); } catch {}
+      const { link: effectiveLink, hasPreviewCard } = await resolveShareLink();
 
       window.open(
         `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(effectiveLink)}&quote=${encodeURIComponent(cardText)}`,
@@ -265,7 +282,7 @@ export function SharePromptCard({ prompt, message, publicLink, userHandle, onClo
         color: "#1877F2",
         emoji: "📘",
         title: "Facebook",
-        steps: effectiveLink !== shareLink
+        steps: hasPreviewCard
           ? [
               "Facebook reçoit ton lien de partage AnonBox",
               "L'image de la carte s'affiche dans l'aperçu du lien",
@@ -273,8 +290,8 @@ export function SharePromptCard({ prompt, message, publicLink, userHandle, onClo
             ]
           : [
               "Facebook reçoit ton lien",
-              "Pour forcer l'image, ton site doit être public (pas localhost)",
-              "Sinon télécharge l'image et joins-la manuellement",
+              "La publication de la carte a échoué, donc pas d'aperçu image",
+              "Vérifie le serveur Next (route /api/shares) puis réessaie",
             ],
         cta: null,
       });
@@ -288,8 +305,7 @@ export function SharePromptCard({ prompt, message, publicLink, userHandle, onClo
     if (!cardRef.current || busy) return;
     setBusy(true);
     try {
-      let effectiveLink = shareLink;
-      try { effectiveLink = await createSharePage(); } catch {}
+      const { link: effectiveLink } = await resolveShareLink();
 
       const nativeResult = await shareViaNative({
         url: effectiveLink,

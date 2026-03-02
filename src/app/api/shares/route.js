@@ -22,7 +22,14 @@ export async function POST(request) {
     const targetUrl = formData.get("targetUrl");
     const isMessage = String(formData.get("isMessage") ?? "") === "true";
 
-    if (!(image instanceof File)) {
+    const isUploadLike =
+      image &&
+      typeof image === "object" &&
+      typeof image.arrayBuffer === "function" &&
+      typeof image.type === "string" &&
+      typeof image.size === "number";
+
+    if (!isUploadLike) {
       return Response.json({ message: "Image requise." }, { status: 400 });
     }
     if (!image.type.startsWith("image/")) {
