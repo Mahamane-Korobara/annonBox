@@ -11,6 +11,7 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { X, Download, Copy, Check } from "lucide-react";
+import { API_URL, STORAGE_KEYS } from "@/lib/utils/constants";
 
 const THEMES = [
   { id: "violet", bg: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", text: "#ffffff", sub: "rgba(255,255,255,0.72)", badge: "rgba(255,255,255,0.18)", border: "rgba(255,255,255,0.2)" },
@@ -123,17 +124,28 @@ export function SharePromptCard({
     formData.append("targetUrl", shareLink);
     formData.append("isMessage", String(isMessage));
 
-    const res = await fetch("/api/shares", {
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem(STORAGE_KEYS.PRIVATE_TOKEN)
+        : null;
+
+    const headers = { Accept: "application/json" };
+    if (token) headers["X-Private-Token"] = token;
+
+    const res = await fetch(`${API_URL}/shares`, {
       method: "POST",
+      headers,
       body: formData,
     });
     if (!res.ok) throw new Error("Publication du lien de partage impossible");
 
     const payload = await res.json();
     const pageUrl =
-      payload?.data?.id && typeof window !== "undefined"
+      payload?.data?.share_page_url ??
+      payload?.data?.sharePageUrl ??
+      (payload?.data?.id && typeof window !== "undefined"
         ? `${window.location.origin}/share/${payload.data.id}`
-        : payload?.data?.sharePageUrl;
+        : null);
     if (!pageUrl) throw new Error("Lien de partage invalide");
 
     shareCacheRef.current = { key: shareCacheKey, url: pageUrl };
@@ -297,7 +309,7 @@ export function SharePromptCard({
           : [
               "WhatsApp s'ouvre avec le texte + lien prêt",
               "La publication de la carte a échoué, donc pas d'aperçu image",
-              "Vérifie le serveur Next (route /api/shares) puis réessaie",
+              "Vérifie l'API Laravel (route POST /api/shares) puis réessaie",
             ],
         cta: null,
       });
@@ -329,7 +341,7 @@ export function SharePromptCard({
           : [
               "Facebook reçoit ton lien",
               "La publication de la carte a échoué, donc pas d'aperçu image",
-              "Vérifie le serveur Next (route /api/shares) puis réessaie",
+              "Vérifie l'API Laravel (route POST /api/shares) puis réessaie",
             ],
         cta: null,
       });
