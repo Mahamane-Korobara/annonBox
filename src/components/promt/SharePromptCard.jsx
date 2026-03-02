@@ -108,6 +108,17 @@ export function SharePromptCard({
       : `${cardText}\n\n👉 Réponds anonymement : ${url}`
   ), [cardText, isMessage]);
 
+  const toFrontendPublicUrl = useCallback((url) => {
+    if (typeof window === "undefined") return url;
+    try {
+      const parsed = new URL(url);
+      if (!parsed.pathname.startsWith("/u/")) return url;
+      return `${window.location.origin}${parsed.pathname}${parsed.search}`;
+    } catch {
+      return url;
+    }
+  }, []);
+
   const createSharePage = useCallback(async () => {
     if (shareCacheRef.current.key === shareCacheKey && shareCacheRef.current.url) {
       return shareCacheRef.current.url;
@@ -117,11 +128,13 @@ export function SharePromptCard({
     const blob = await canvasToBlob(canvas);
     if (!blob) throw new Error("Capture image impossible");
 
+    const targetUrl = toFrontendPublicUrl(shareLink);
+
     const formData = new FormData();
     formData.append("image", blob, filename);
     formData.append("cardText", cardText);
-    formData.append("shareText", buildShareText(shareLink));
-    formData.append("targetUrl", shareLink);
+    formData.append("shareText", buildShareText(targetUrl));
+    formData.append("targetUrl", targetUrl);
     formData.append("isMessage", String(isMessage));
 
     const token =
@@ -150,7 +163,16 @@ export function SharePromptCard({
 
     shareCacheRef.current = { key: shareCacheKey, url: pageUrl };
     return pageUrl;
-  }, [buildShareText, cardText, filename, getCanvas, isMessage, shareCacheKey, shareLink]);
+  }, [
+    buildShareText,
+    cardText,
+    filename,
+    getCanvas,
+    isMessage,
+    shareCacheKey,
+    shareLink,
+    toFrontendPublicUrl,
+  ]);
 
   const resolveShareLink = useCallback(async () => {
     try {
@@ -158,9 +180,9 @@ export function SharePromptCard({
       return { link: pageLink, hasPreviewCard: true };
     } catch (error) {
       console.error("Create share page failed:", error);
-      return { link: shareLink, hasPreviewCard: false };
+      return { link: toFrontendPublicUrl(shareLink), hasPreviewCard: false };
     }
-  }, [createSharePage, shareLink]);
+  }, [createSharePage, shareLink, toFrontendPublicUrl]);
 
   const shareViaNative = useCallback(async ({ url, text }) => {
     if (!cardRef.current || typeof navigator === "undefined" || typeof navigator.share !== "function") {
